@@ -1,5 +1,6 @@
 #define LIGHT_SENSOR A4 // = GPIO32
 const int interval = 1;
+extern int lightData;
 
 void setup() {
     Serial.begin(115200);
@@ -8,8 +9,8 @@ void setup() {
 
 void loop()
 {
-    int lightData = analogRead(LIGHT_SENSOR);
-    Serial.printf("あかるさ: %d\n", lightData);
+    lightData = analogRead(LIGHT_SENSOR);
+    Serial.printf("明るさ: %d\n", lightData);
 
     delay(interval * 1000);
 }
