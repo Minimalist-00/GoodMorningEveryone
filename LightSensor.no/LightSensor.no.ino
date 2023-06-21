@@ -1,15 +1,15 @@
-uint64_t chipid;  
+#define LIGHT_SENSOR A4 // = GPIO32
+const int interval = 1;
 
 void setup() {
     Serial.begin(115200);
+    pinMode(LIGHT_SENSOR, ANALOG);
 }
-
-const int pinLight = A0;
 
 void loop()
 {
-    int sensorValue = analogRead(pinLight);    //the light sensor is attached to analog 0
-    Serial.printf("Light Strength = %d\n",sensorValue);
+    int lightData = analogRead(LIGHT_SENSOR);
+    Serial.printf("あかるさ: %d\n", lightData);
 
-    delay(2000);
+    delay(interval * 1000);
 }
