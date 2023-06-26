@@ -15,10 +15,12 @@ void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
 
   // 受信データの解析
   int receivedData;
-  memcpy(&receivedData, data, sizeof(receivedData));
+  memcpy(&brightnessData, data, sizeof(brightnessData)); //data -> brightnessData へコピー
 
   // 受信したデータの表示
-  Serial.printf("Received data: %d\n", receivedData);
+  Serial.printf("Now brightness: %d\n", brightnessData);
+
+  //ここに受信側の処理を記述 / receivedDataで条件分岐など
 }
 
 void setup() {
@@ -51,5 +53,5 @@ void setup() {
 }
 
 void loop() {
-  // 特別な処理は不要
+  // とくになし
 }
