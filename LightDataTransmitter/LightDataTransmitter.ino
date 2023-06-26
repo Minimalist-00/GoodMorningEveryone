@@ -47,10 +47,38 @@ void setup() {
   esp_now_register_send_cb(onSend);
 }
 
+void EspNowSend() {
+  // uint16_tの値を2つのuint8_tに変換
+  uint8_t dataToSend[2]; // 送信するデータ配列
+  dataToSend[0] = brightnessData >> 8; // 上位8ビット
+  dataToSend[1] = brightnessData & 0xFF; // 下位8ビット
+
+  esp_err_t result = esp_now_send(slaveAddress, dataToSend, sizeof(dataToSend)); // データの送信
+  // esp_err_t result = esp_now_send(slaveAddress, (uint8_t *) &brightnessData, sizeof(brightnessData)); // データの送信
+
+  Serial.print("Send Status: ");
+  if (result == ESP_OK) {
+    Serial.println("Success"); // 送信成功
+  } else if (result == ESP_ERR_ESPNOW_NOT_INIT) {
+    Serial.println("ESPNOW not Init."); // ESP-Now未初期化
+  } else if (result == ESP_ERR_ESPNOW_ARG) {
+    Serial.println("Invalid Argument"); // 不正な引数
+  } else if (result == ESP_ERR_ESPNOW_INTERNAL) {
+    Serial.println("Internal Error"); // 内部エラー
+  } else if (result == ESP_ERR_ESPNOW_NO_MEM) {
+    Serial.println("ESP_ERR_ESPNOW_NO_MEM"); // メモリ不足
+  } else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
+    Serial.println("Peer not found."); // ピアが見つからない
+  } else {
+    Serial.println("Not sure what happened"); // 不明なエラー
+  }
+  Serial.printf("明るさ: %d\n", brightnessData); // 取得したデータをシリアルモニターに出力
+}
+
 void loop() {
   brightnessData = analogRead(LIGHT_SENSOR); // 光センサからデータを読み取る
-  Serial.printf("明るさ: %d\n", brightnessData); // 取得したデータをシリアルモニターに出力
-  esp_err_t result = esp_now_send(slaveAddress, (uint8_t *) &brightnessData, sizeof(brightnessData)); // データの送信
+  EspNowSend(); // データの送信
+  
 
   delay(interval * 1000); // 指定したインターバルでデータを送信
 }

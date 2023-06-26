@@ -14,8 +14,8 @@ void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   Serial.printf("Last Packet Recv from: %s\n", macStr); // 最後に受信したパケットのMACアドレス
 
   // 受信データの解析
-  int receivedData;
-  memcpy(&brightnessData, data, sizeof(brightnessData)); //data -> brightnessData へコピー
+  uint16_t brightnessData = 0;
+  brightnessData = (uint16_t)data[0] << 8 | data[1]; // 2つのuint8_t型を組み合わせてuint16_t型へ戻す
 
   // 受信したデータの表示
   Serial.printf("Now brightness: %d\n", brightnessData);
