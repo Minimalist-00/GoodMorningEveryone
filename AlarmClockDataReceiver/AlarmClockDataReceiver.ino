@@ -20,7 +20,7 @@ void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   // 受信したデータの表示
   Serial.printf("Now brightness: %d\n", brightnessData);
 
-  //ここに受信側の処理を記述 / receivedDataで条件分岐など
+  //ここに受信側の処理を記述 / brightnessDataで条件分岐など
 }
 
 void setup() {
