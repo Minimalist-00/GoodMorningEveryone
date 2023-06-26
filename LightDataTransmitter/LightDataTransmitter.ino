@@ -1,14 +1,15 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
-#define LIGHT_SENSOR A4 // 光センサのピン番号, GPIO32
+#define LIGHT_SENSOR A4 // 光センサのピン番号, =GPIO32
 const int interval = 1;
 int col = 0; // 光センサからのデータ
+uint8_t slaveAddress[] = { 0x40, 0x91, 0x51, 0xBD, 0xDC, 0x8C }; //受信側のmacアドレス
 
 esp_now_peer_info_t slave; // ESP-Nowのスレーブデバイスの情報
 
 // 送信コールバック
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+void onSend(const uint8_t *mac_addr, esp_now_send_status_t status) {
   char macStr[18];
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -17,11 +18,11 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.println(macStr); // 最後に送信したパケットのMACアドレス
   Serial.print("Last Packet Send Status: ");
   // 送信成功か失敗かを表示
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");
 }
 
 // 受信コールバック
-void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
+void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   char macStr[18];
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -50,12 +51,6 @@ void setup() {
     ESP.restart();
   }
 
-  // スレーブの情報を設定
-  memset(&slave, 0, sizeof(slave));
-  for (int i = 0; i < 6; ++i) {
-    slave.peer_addr[i] = (uint8_t)0xff;
-  }
-
   // スレーブの追加
   esp_err_t addStatus = esp_now_add_peer(&slave);
   if (addStatus == ESP_OK) {
@@ -64,13 +59,13 @@ void setup() {
   }
 
   // 送受信コールバックの登録
-  esp_now_register_send_cb(OnDataSent);
-  esp_now_register_recv_cb(OnDataRecv);
+  esp_now_register_send_cb(onSend);
+  esp_now_register_recv_cb(onReceive);
 }
 
 void EspNowSend() {
   uint16_t data[1] = {col}; // 送信データ
-  esp_err_t result = esp_now_send(slave.peer_addr, (uint8_t *)data, sizeof(data)); // データの送信
+  esp_err_t result = esp_now_send(slaveAddress, data, sizeof(data)); // データの送信
 
   Serial.print("Send Status: ");
   if (result == ESP_OK) {
