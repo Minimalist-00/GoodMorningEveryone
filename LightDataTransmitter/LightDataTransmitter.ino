@@ -35,12 +35,18 @@ void setup() {
     ESP.restart(); //再起動
   }
 
+  // スレーブデバイスの設定
+  memcpy(slave.peer_addr, slaveAddress, 6);
+  slave.channel = 0;  
+  slave.encrypt = false;
+
   // スレーブの追加
   esp_err_t addStatus = esp_now_add_peer(&slave);
   if (addStatus == ESP_OK) {  // ペアリング成功
     Serial.println("Pair success");
   } else { // ペアリング失敗
-    Serial.print("Pair failed");
+    Serial.print("Pair failed with error code: ");
+    Serial.println(addStatus);
   }
 
   // 送信コールバックの登録
@@ -68,7 +74,7 @@ void EspNowSend() {
   } else if (result == ESP_ERR_ESPNOW_NO_MEM) {
     Serial.println("ESP_ERR_ESPNOW_NO_MEM"); // メモリ不足
   } else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
-    Serial.println("Peer not found."); // ピアが見つからない
+    Serial.println("Pair not found."); // ペアが見つからない
   } else {
     Serial.println("Not sure what happened"); // 不明なエラー
   }
@@ -79,6 +85,5 @@ void loop() {
   brightnessData = analogRead(LIGHT_SENSOR); // 光センサからデータを読み取る
   EspNowSend(); // データの送信
   
-
   delay(interval * 1000); // 指定したインターバルでデータを送信
 }
