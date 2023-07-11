@@ -1,2 +1,2 @@
-# GoodMorningEveryone
- Aruduinoで目覚まし時計を作る
+## 使用技術
+[![My Skills](https://skillicons.dev/icons?i=arduino)](https://skillicons.dev)
