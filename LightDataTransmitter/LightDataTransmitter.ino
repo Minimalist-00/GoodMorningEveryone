@@ -3,8 +3,9 @@
 #include <time.h>
 
 #define LIGHT_SENSOR A4  // 光センサのピン番号, GPIO32
-#define SWITCH_PIN 4 // スイッチのピン番号, GPIO4
+#define SWITCH_PIN 4     // スイッチのピン番号, GPIO4
 const int interval = 1;  // 秒数を指定
+uint16_t brightnessData = 0;
 
 uint8_t slaveAddress[] = { 0x40, 0x91, 0x51, 0xBD, 0xDC, 0x8C };  //受信側のmacアドレス
 esp_now_peer_info_t slave;                                        // ESP-Nowのスレーブデバイスの情報
@@ -31,16 +32,18 @@ void onSend(const uint8_t *mac_addr, esp_now_send_status_t status) {
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+  /*
   Serial.print("Last Packet Sent to: ");
   Serial.println(macStr);  // 最後に送信したパケットのMACアドレス
   Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");  // 送信成功か失敗かを表示
+  */
 }
 
 void setup() {
-  Serial.begin(115200);               // シリアル通信の開始
-  pinMode(LIGHT_SENSOR, ANALOG); // 光センサのピン設定
-  pinMode(SWITCH_PIN, INPUT); //Switchのピン設定
+  Serial.begin(115200);           // シリアル通信の開始
+  pinMode(LIGHT_SENSOR, ANALOG);  // 光センサのピン設定
+  pinMode(SWITCH_PIN, INPUT);     //Switchのピン設定
 
   WiFi.mode(WIFI_STA);  // WiFiをステーションモードに設定
   WiFi.disconnect();    // 初期化時にWiFiを切断
@@ -119,9 +122,6 @@ void EspNowSend() {
   } else {
     Serial.println("Not sure what happened");  // 不明なエラー
   }
-
-  uint16_t brightnessData = (uint16_t)sensorData.lightValueHigh << 8 | sensorData.lightValueLow;
-  Serial.printf("明るさ: %d\n", brightnessData);  // 取得したデータをシリアルモニターに出力
 }
 
 void loop() {
@@ -135,19 +135,22 @@ void loop() {
 
   int currentLightValue = analogRead(LIGHT_SENSOR);   // 光センサからデータを読み取る
   bool currentSwitchState = digitalRead(SWITCH_PIN);  // Switchの状態を読み取る
-  Serial.printf("明るさ: %d\n", currentLightValue);
+  // Serial.printf("明るさ: %d\n", currentLightValue);
 
-  // 明るさ4000以上かつ、明るさが変わった場合にのみ送信
-  if (currentLightValue > 4000) {
+  // 明るさ〇〇以上かつ、明るさが変わった場合にのみ送信
+  if (currentLightValue > 3500 && currentLightValue != brightnessData) {
     sensorData.lightValueHigh = currentLightValue >> 8;
     sensorData.lightValueLow = currentLightValue & 0xFF;
-    sensorData.isLightData = true;  // 光センサデータを送信
+    brightnessData = (uint16_t)sensorData.lightValueHigh << 8 | sensorData.lightValueLow;
+    Serial.printf("明るさ: %d\n", brightnessData);  // 取得したデータをシリアルモニターに出力
+    sensorData.isLightData = true;                  // 光センサデータを送信
     EspNowSend();
   }
 
   if (currentSwitchState != sensorData.switchState) {
     sensorData.switchState = currentSwitchState;
     sensorData.isLightData = false;  // スイッチ状態データを送信
+    Serial.printf("スイッチの状態: %d\n", currentSwitchState);  // 取得したデータをシリアルモニターに出力
     EspNowSend();
   }
 
