@@ -2,14 +2,20 @@
 #include <WiFi.h>
 #include <time.h>
 
-#define LIGHT_SENSOR A4 // 光センサのピン番号, GPIO32
-#define SWITCH_PIN 2
-const int interval = 1; // 秒数を指定
-int lightValue = 0; // 光センサからのデータ
-uint8_t slaveAddress[] = { 0x40, 0x91, 0x51, 0xBD, 0xDC, 0x8C }; //受信側のmacアドレス
-esp_now_peer_info_t slave; // ESP-Nowのスレーブデバイスの情報
+#define LIGHT_SENSOR A4  // 光センサのピン番号, GPIO32
+#define SWITCH_PIN 4     // スイッチのピン番号, GPIO4
+const int interval = 1;  // 秒数を指定
+uint16_t brightnessData = 0;
+bool currentLightState;
 
-int switchState = 0;
+uint8_t slaveAddress[] = { 0x40, 0x91, 0x51, 0xBD, 0xDC, 0x8C };  //受信側のmacアドレス
+esp_now_peer_info_t slave;                                        // ESP-Nowのスレーブデバイスの情報
+
+struct __attribute__((packed)) SENSOR_DATA {
+  bool lightState;   // 明るさ〇〇以上かどうか
+  bool switchState;  // スイッチの状態
+  bool isLightData;  // 光センサデータであるかどうか
+} sensorData;
 
 /*
 #define NTP_SERVER "pool.ntp.org"
@@ -26,19 +32,21 @@ void onSend(const uint8_t *mac_addr, esp_now_send_status_t status) {
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+  /*
   Serial.print("Last Packet Sent to: ");
-  Serial.println(macStr); // 最後に送信したパケットのMACアドレス
+  Serial.println(macStr);  // 最後に送信したパケットのMACアドレス
   Serial.print("Last Packet Send Status: ");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed"); // 送信成功か失敗かを表示
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");  // 送信成功か失敗かを表示
+  */
 }
 
 void setup() {
-  Serial.begin(115200); // シリアル通信の開始
-  pinMode(LIGHT_SENSOR, ANALOG); // 光センサのピン設定
-  pinMode(SWITCH_PIN, INPUT); //Switchのピン設定
+  Serial.begin(115200);               // シリアル通信の開始
+  pinMode(LIGHT_SENSOR, ANALOG);      // 光センサのピン設定
+  pinMode(SWITCH_PIN, INPUT_PULLUP);  //Switchのピン設定
 
-  WiFi.mode(WIFI_STA); // WiFiをステーションモードに設定
-  WiFi.disconnect(); // 初期化時にWiFiを切断
+  WiFi.mode(WIFI_STA);  // WiFiをステーションモードに設定
+  WiFi.disconnect();    // 初期化時にWiFiを切断
 
   /*
   // WiFi設定
@@ -60,19 +68,19 @@ void setup() {
     Serial.println("ESPNow 初期化成功");
   } else {
     Serial.println("ESPNow 初期化失敗");
-    ESP.restart(); //再起動
+    ESP.restart();  //再起動
   }
 
   // スレーブデバイスの設定
   memcpy(slave.peer_addr, slaveAddress, 6);
-  slave.channel = 0;  
+  slave.channel = 0;
   slave.encrypt = false;
 
   // スレーブの追加
   esp_err_t addStatus = esp_now_add_peer(&slave);
   if (addStatus == ESP_OK) {  // ペアリング成功
     Serial.println("ペアリング成功");
-  } else { // ペアリング失敗
+  } else {  // ペアリング失敗
     Serial.print("ペアリング失敗, error code: ");
     Serial.println(addStatus);
   }
@@ -91,33 +99,30 @@ void setup() {
 }
 
 void EspNowSend() {
-  // uint16_tの値を2つのuint8_tに変換
-  uint8_t dataToSend[2]; // 送信するデータ配列
-  dataToSend[0] = lightValue >> 8; // 上位8ビット
-  dataToSend[1] = lightValue & 0xFF; // 下位8ビット
 
-  esp_err_t result = esp_now_send(slaveAddress, dataToSend, sizeof(dataToSend)); // データの送信
+  esp_err_t result = esp_now_send(slaveAddress, (uint8_t *)&sensorData, sizeof(sensorData));  // データの送信
 
   Serial.print("Send Status: ");
   if (result == ESP_OK) {
-    Serial.println("Success"); // 送信成功
+    Serial.println("Success");  // 送信成功
   } else if (result == ESP_ERR_ESPNOW_NOT_INIT) {
-    Serial.println("ESPNOW not Init."); // ESP-Now未初期化
+    Serial.println("ESPNOW not Init.");  // ESP-Now未初期化
   } else if (result == ESP_ERR_ESPNOW_ARG) {
-    Serial.println("Invalid Argument"); // 不正な引数
+    Serial.println("Invalid Argument");  // 不正な引数
   } else if (result == ESP_ERR_ESPNOW_INTERNAL) {
-    Serial.println("Internal Error"); // 内部エラー
+    Serial.println("Internal Error");  // 内部エラー
   } else if (result == ESP_ERR_ESPNOW_NO_MEM) {
-    Serial.println("ESP_ERR_ESPNOW_NO_MEM"); // メモリ不足
+    Serial.println("ESP_ERR_ESPNOW_NO_MEM");  // メモリ不足
   } else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
-    Serial.println("Pair not found."); // ペアが見つからない
+    Serial.println("Pair not found.");  // ペアが見つからない
   } else {
-    Serial.println("Not sure what happened"); // 不明なエラー
+    Serial.println("Not sure what happened");  // 不明なエラー
   }
-  Serial.printf("明るさ: %d\n", lightValue); // 取得したデータをシリアルモニターに出力
 }
 
 void loop() {
+  int currentLightValue = analogRead(LIGHT_SENSOR);   // 光センサからデータを読み取る
+  bool currentSwitchValue = digitalRead(SWITCH_PIN);  // Switchの状態を読み取る
   /* 時間の制約
   struct tm timeinfo;
   getLocalTime(&timeinfo); // 時間の指定
@@ -125,12 +130,35 @@ void loop() {
     return;
   }
   */
-  lightValue = analogRead(LIGHT_SENSOR); // 光センサからデータを読み取る
-  switchState = digitalRead(SWITCH_PIN); //Switchの状態を読み取る
-  
-  if(lightValue > 3900 && switchState == HIGH) { // 光が閾値以上のときのみデータを送信
-    EspNowSend(); 
+
+  Serial.printf("明るさ: %d\n", currentLightValue);
+
+  // 明るさの状態を送信
+  if (currentLightValue > 4000) {
+    sensorData.isLightData = true;
+    currentLightState = true;
+    if (currentLightState != sensorData.lightState) { // 既にtrueではないか？
+      sensorData.lightState = currentLightState;
+      Serial.printf("明るさの状態: %d\n", currentLightState);
+      EspNowSend();
+    }
+  } else {
+    sensorData.isLightData = true;
+    currentLightState = false;
+    if (currentLightState != sensorData.lightState) { // 既にfalseではないか？
+      sensorData.lightState = currentLightState;
+      Serial.printf("明るさの状態: %d\n", currentLightState);
+      EspNowSend();
+    }
   }
-  
-  delay(interval * 1000); // 指定したインターバルでデータを送信
+
+  // スイッチの状態を送信
+  if (currentSwitchValue != sensorData.switchState) {
+    sensorData.isLightData = false;
+    sensorData.switchState = currentSwitchValue;
+    Serial.printf("スイッチの状態: %d\n", currentSwitchValue);  // 取得したデータをシリアルモニターに出力
+    EspNowSend();
+  }
+
+  delay(interval * 1000);  // 指定したインターバルでデータを送信
 }
