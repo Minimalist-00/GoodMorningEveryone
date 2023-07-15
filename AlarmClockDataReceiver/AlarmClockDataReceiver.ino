@@ -4,20 +4,25 @@
 
 #define LED_PIN 12
 #define NUM_LEDS 30
-#define BRIGHTNESS 3000
+#define BRIGHTNESS 100
 #define BUZZER_PIN 25
-#define BEAT 500     // 音を鳴らす間隔
-#define Hz 10        // 周波数
-#define DELAYVAL 50  //LEDの点滅間隔
+#define BEAT 500      // 音を鳴らす間隔
+#define FREQUENCY 10  // 周波数
+#define DELAYVAL 50   //LEDの点滅間隔
 
 uint8_t senderAddress[] = { 0x40, 0x91, 0x51, 0xBE, 0xFB, 0x50 };  //送信機のMACアドレス
 esp_now_peer_info_t sender;                                        // ESP-Nowの送信機の情報
 
 Adafruit_NeoPixel pixels(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
-volatile bool receivedFlag = false; // 受信フラグ デフォルトではfalse
+
+struct __attribute__((packed)) SENSOR_DATA {
+  bool lightState;   // 明るさ〇〇以上かどうか
+  bool switchState;  // スイッチの状態
+  bool isLightData;  // 光センサデータであるかどうか
+} sensorData;
 
 void playmusic() {
-  ledcWriteTone(1, Hz);
+  ledcWriteTone(1, FREQUENCY);
   delay(BEAT);
 }
 
@@ -47,20 +52,26 @@ void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   Serial.printf("Last Packet Recv from: %s\n", macStr);  // 最後に受信したパケットのMACアドレス
+  memcpy(&sensorData, data, data_len);
 
-  // 受信データの解析
-  uint16_t brightnessData = 0;
-  brightnessData = (uint16_t)data[0] << 8 | data[1];  // 2つのuint8_t型を組み合わせてuint16_t型へ戻す
+  //受信したときに動く処理
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    pixels.setPixelColor(i, pixels.Color(255, 0, 0));  // (R, G, B)
+  }
 
-  // 受信したデータの表示
-  Serial.printf("Now brightness: %d\n", brightnessData);
+  // ピクセルの状態を更新
+  pixels.show();
 
-    unsigned long blink_start_time = millis();    // 現在の時間を取得
-    while (millis() - blink_start_time < 1000) {  // 1秒間繰り返す
-      playmusic();                                //ブザーを鳴らす
-      blinkLED();                                 //LEDテープの点滅
-    }
-  // receivedFlag = true;
+
+  delay(DELAYVAL);
+
+  // すべてのLEDを消灯
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+  }
+  pixels.show();
+
+  delay(DELAYVAL);
 }
 
 void setup() {
@@ -102,8 +113,4 @@ void setup() {
 }
 
 void loop() {
-  // if (receivedFlag) {
-
-  //   receivedFlag = false;
-  // }
 }
