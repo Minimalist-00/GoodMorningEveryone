@@ -12,6 +12,7 @@
 
 uint8_t senderAddress[] = { 0x40, 0x91, 0x51, 0xBE, 0xFB, 0x50 };  //送信機のMACアドレス
 esp_now_peer_info_t sender;                                        // ESP-Nowの送信機の情報
+bool alarmState = false;
 
 Adafruit_NeoPixel pixels(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -54,24 +55,24 @@ void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   Serial.printf("Last Packet Recv from: %s\n", macStr);  // 最後に受信したパケットのMACアドレス
   memcpy(&sensorData, data, data_len);
 
+  // lightStateとswitchStateがtrueの場合はアラームを作動
+  if (sensorData.lightState && sensorData.switchState) {
+    alarmState = true;
+  } else {
+    alarmState = false;
+  }
+
   //受信したときに動く処理
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    pixels.setPixelColor(i, pixels.Color(255, 0, 0));  // (R, G, B)
-  }
-
-  // ピクセルの状態を更新
-  pixels.show();
-
-
-  delay(DELAYVAL);
-
-  // すべてのLEDを消灯
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-  }
-  pixels.show();
-
-  delay(DELAYVAL);
+  // for (uint8_t i = 0; i < NUM_LEDS; i++) {
+  //   pixels.setPixelColor(i, pixels.Color(255, 0, 0));  // (R, G, B)
+  // }
+  // pixels.show();
+  // delay(DELAYVAL);
+  // for (uint8_t i = 0; i < NUM_LEDS; i++) {
+  //   pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+  // }
+  // pixels.show();
+  // delay(DELAYVAL);
 }
 
 void setup() {
@@ -113,4 +114,16 @@ void setup() {
 }
 
 void loop() {
+  if (alarmState) {  //アラームを鳴らす処理
+
+
+
+    
+  } else {  //アラームを停止
+    for (uint8_t i = 0; i < NUM_LEDS; i++) {
+      pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+    }
+    pixels.show();
+    ledcWriteTone(1, 0);
+  }
 }
