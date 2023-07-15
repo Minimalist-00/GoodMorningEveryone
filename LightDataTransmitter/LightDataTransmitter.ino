@@ -39,8 +39,8 @@ void onSend(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 void setup() {
   Serial.begin(115200);               // シリアル通信の開始
-  pinMode(LIGHT_SENSOR, INPUT);       // 光センサのピン設定
-  pinMode(SWITCH_PIN, INPUT_PULLUP);  //Switchのピン設定
+  pinMode(LIGHT_SENSOR, ANALOG); // 光センサのピン設定
+  pinMode(SWITCH_PIN, INPUT); //Switchのピン設定
 
   WiFi.mode(WIFI_STA);  // WiFiをステーションモードに設定
   WiFi.disconnect();    // 初期化時にWiFiを切断
@@ -135,9 +135,10 @@ void loop() {
 
   int currentLightValue = analogRead(LIGHT_SENSOR);   // 光センサからデータを読み取る
   bool currentSwitchState = digitalRead(SWITCH_PIN);  // Switchの状態を読み取る
+  Serial.printf("明るさ: %d\n", currentLightValue);
 
   // 明るさ4000以上かつ、明るさが変わった場合にのみ送信
-  if (currentLightValue > 40000) {
+  if (currentLightValue > 4000) {
     sensorData.lightValueHigh = currentLightValue >> 8;
     sensorData.lightValueLow = currentLightValue & 0xFF;
     sensorData.isLightData = true;  // 光センサデータを送信
