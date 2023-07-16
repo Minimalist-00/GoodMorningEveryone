@@ -1,7 +1,7 @@
 #include <Adafruit_NeoPixel.h>
 #define LED_PIN     12
 #define NUM_LEDS    30
-#define BRIGHTNESS  3000
+#define BRIGHTNESS  10
 #define BUZZER_PIN 25
 //音を鳴らす時間
 #define BEAT 500
@@ -9,7 +9,7 @@
 Adafruit_NeoPixel pixels(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 void playmusic(){
    ledcWriteTone(1,C1);
-      delay(BEAT);
+      // delay(BEAT);
 }
  
 #define DELAYVAL 50 // Time (in milliseconds) to pause between pixels

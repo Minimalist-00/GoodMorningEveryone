@@ -32,12 +32,9 @@ void onSend(const uint8_t *mac_addr, esp_now_send_status_t status) {
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-  /*
-  Serial.print("Last Packet Sent to: ");
-  Serial.println(macStr);  // 最後に送信したパケットのMACアドレス
+
   Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Failed");  // 送信成功か失敗かを表示
-  */
 }
 
 void setup() {
@@ -137,7 +134,7 @@ void loop() {
   if (currentLightValue > 4000) {
     sensorData.isLightData = true;
     currentLightState = true;
-    if (currentLightState != sensorData.lightState) { // 既にtrueではないか？
+    if (currentLightState != sensorData.lightState) {  // 既にtrueではないか？
       sensorData.lightState = currentLightState;
       Serial.printf("明るさの状態: %d\n", currentLightState);
       EspNowSend();
@@ -145,7 +142,7 @@ void loop() {
   } else {
     sensorData.isLightData = true;
     currentLightState = false;
-    if (currentLightState != sensorData.lightState) { // 既にfalseではないか？
+    if (currentLightState != sensorData.lightState) {  // 既にfalseではないか？
       sensorData.lightState = currentLightState;
       Serial.printf("明るさの状態: %d\n", currentLightState);
       EspNowSend();
