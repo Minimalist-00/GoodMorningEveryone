@@ -63,7 +63,7 @@ void onReceive(const uint8_t* mac_addr, const uint8_t* data, int data_len) {
   Serial.println("Received now");
   Serial.println("lightState: " + String(sensorData.lightState));
   Serial.println("switchState: " + String(sensorData.switchState));
-  Serial.println("isLightData: " + String(sensorData.isLightData));
+  // Serial.println("isLightData: " + String(sensorData.isLightData));
 
   if (sensorData.lightState && sensorData.switchState) {
     alarmState = true;
