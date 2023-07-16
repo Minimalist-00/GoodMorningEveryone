@@ -22,6 +22,14 @@ struct __attribute__((packed)) SENSOR_DATA {
   bool isLightData;  // 光センサデータであるかどうか
 } sensorData;
 
+/*
+#define NTP_SERVER "pool.ntp.org"
+#define TIME_ZONE 9  // 日本のタイムゾーン
+#define DST 0        // 夏時間 (日本では通常は0)
+const char* ssid = "aterm-3663ca-g";     // ネットワーク名
+const char* password = "8cc6fa2fe57bd";  // ネットワークパスワード
+*/
+
 // ブザーを鳴らす処理
 void playmusic() {
   ledcWriteTone(1, FREQUENCY);
@@ -43,7 +51,7 @@ void blinkLED() {
 }
 
 // 受信コールバック
-void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
+void onReceive(const uint8_t* mac_addr, const uint8_t* data, int data_len) {
   char macStr[18];
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -94,6 +102,18 @@ void setup() {
     Serial.println(addStatus);
   }
 
+  /*
+  // WiFi設定
+
+  // WiFiに接続
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {  // WiFiに接続するまで待つ
+    delay(1000);
+    Serial.println("Connecting ...");
+  }
+  Serial.println("Successfully connected to WiFi");
+  */
+
   // 初期化設定
   ledcSetup(1, 12000, 8);
   ledcAttachPin(BUZZER_PIN, 1);
@@ -104,10 +124,26 @@ void setup() {
 
   // 受信コールバックの登録
   esp_now_register_recv_cb(onReceive);
+
+  /*
+  // NTPサーバから時間を取得し、ESP32の時計を設定
+  configTime(TIME_ZONE * 3600, DST * 0, NTP_SERVER);
+  delay(1000);
+  struct tm timeinfo;
+  getLocalTime(&timeinfo);
+  Serial.println(&timeinfo, "時間設定: %B %d %Y %H:%M:%S");
+  */
 }
 
 void loop() {
 
+  /*
+  // 時間の制約
+  struct tm timeinfo;
+  getLocalTime(&timeinfo);  // 時間の指定
+  if (timeinfo.tm_hour < 5 || timeinfo.tm_hour >= 8) {
+  }
+  */
   // 明るい + スイッチがONのとき LEDテープを光らせる
   if (alarmState) {
     blinkLED();
