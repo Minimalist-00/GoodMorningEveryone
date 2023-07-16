@@ -2,13 +2,13 @@
 #include <WiFi.h>
 #include <Adafruit_NeoPixel.h>
 
-#define LED_PIN 12
+#define LED_PIN 4
 #define NUM_LEDS 30
-#define BRIGHTNESS 100
+#define BRIGHTNESS 3000  //明るさ
 #define BUZZER_PIN 25
 #define BEAT 500      // 音を鳴らす間隔
 #define FREQUENCY 10  // 周波数
-#define DELAYVAL 50   //LEDの点滅間隔
+#define LED_DELAY 50  //LEDの点滅間隔
 
 uint8_t senderAddress[] = { 0x40, 0x91, 0x51, 0xBE, 0xFB, 0x50 };  //送信機のMACアドレス
 esp_now_peer_info_t sender;                                        // ESP-Nowの送信機の情報
@@ -22,9 +22,9 @@ struct __attribute__((packed)) SENSOR_DATA {
   bool isLightData;  // 光センサデータであるかどうか
 } sensorData;
 
+// ブザーを鳴らす処理
 void playmusic() {
   ledcWriteTone(1, FREQUENCY);
-  delay(BEAT);
 }
 
 // LEDが光る処理
@@ -32,19 +32,15 @@ void blinkLED() {
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
     pixels.setPixelColor(i, pixels.Color(255, 0, 0));  // (R, G, B)
   }
-
-  // ピクセルの状態を更新
   pixels.show();
-  delay(DELAYVAL);
+  delay(LED_DELAY);
 
-  // すべてのLEDを消灯
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
     pixels.setPixelColor(i, pixels.Color(0, 0, 0));
   }
   pixels.show();
-  delay(DELAYVAL);
+  delay(LED_DELAY);
 }
-
 
 // 受信コールバック
 void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
@@ -52,27 +48,22 @@ void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-  Serial.printf("Last Packet Recv from: %s\n", macStr);  // 最後に受信したパケットのMACアドレス
+  // Serial.printf("Last Packet Recv from: %s\n", macStr);  // 最後に受信したパケットのMACアドレス
   memcpy(&sensorData, data, data_len);
 
-  // lightStateとswitchStateがtrueの場合はアラームを作動
+  // 受信データの確認
+  Serial.println("Received now");
+  Serial.println("lightState: " + String(sensorData.lightState));
+  Serial.println("switchState: " + String(sensorData.switchState));
+  Serial.println("isLightData: " + String(sensorData.isLightData));
+
   if (sensorData.lightState && sensorData.switchState) {
     alarmState = true;
+    playmusic();  // ブザーを鳴らす
   } else {
     alarmState = false;
+    ledcWriteTone(1, 0);  // Stop buzzer
   }
-
-  //受信したときに動く処理
-  // for (uint8_t i = 0; i < NUM_LEDS; i++) {
-  //   pixels.setPixelColor(i, pixels.Color(255, 0, 0));  // (R, G, B)
-  // }
-  // pixels.show();
-  // delay(DELAYVAL);
-  // for (uint8_t i = 0; i < NUM_LEDS; i++) {
-  //   pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-  // }
-  // pixels.show();
-  // delay(DELAYVAL);
 }
 
 void setup() {
@@ -83,10 +74,10 @@ void setup() {
 
   // ESP-Nowの初期化
   if (esp_now_init() == ESP_OK) {
-    Serial.println("ESPNow Init Success");  // 初期化成功
+    Serial.println("ESPNow 初期化成功");
   } else {
-    Serial.println("ESPNow Init Failed");  // 初期化失敗
-    ESP.restart();
+    Serial.println("ESPNow 初期化失敗");
+    ESP.restart();  //再起動
   }
 
   // 送信機の情報を設定
@@ -95,35 +86,36 @@ void setup() {
   sender.encrypt = false;
 
   // 送信機をペアリングリストに追加
-  if (esp_now_add_peer(&sender) != ESP_OK) {
-    Serial.println("Failed to add peer");
-    return;
-
-    ledcSetup(1, 12000, 8);
-    ledcAttachPin(BUZZER_PIN, 1);
-
-    pixels.begin();
-    pixels.setBrightness(BRIGHTNESS);  //明るさの設定
-    Serial.begin(115200);
-
-    pixels.clear();
+  esp_err_t addStatus = esp_now_add_peer(&sender);
+  if (addStatus == ESP_OK) {  // ペアリング成功
+    Serial.println("ペアリング成功");
+  } else {  // ペアリング失敗
+    Serial.print("ペアリング失敗, error code: ");
+    Serial.println(addStatus);
   }
+
+  // 初期化設定
+  ledcSetup(1, 12000, 8);
+  ledcAttachPin(BUZZER_PIN, 1);
+  pixels.begin();
+  pixels.setBrightness(BRIGHTNESS);  // 明るさの設定
+  pixels.clear();
+  pixels.show();
 
   // 受信コールバックの登録
   esp_now_register_recv_cb(onReceive);
 }
 
 void loop() {
-  if (alarmState) {  //アラームを鳴らす処理
 
-
-
-    
-  } else {  //アラームを停止
+  // 明るい + スイッチがONのとき LEDテープを光らせる
+  if (alarmState) {
+    blinkLED();
+  } else {
+    // LEDテープを消灯
     for (uint8_t i = 0; i < NUM_LEDS; i++) {
       pixels.setPixelColor(i, pixels.Color(0, 0, 0));
     }
     pixels.show();
-    ledcWriteTone(1, 0);
   }
 }
