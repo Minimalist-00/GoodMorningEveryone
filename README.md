@@ -4,4 +4,4 @@
 
 ## 概要
 
-LightDataTransmitter が送信機、AlarmClockDataReceiver が受信機です。
+LightDataTransmitter が送信機、AlarmClockDataReceiver が受信機
