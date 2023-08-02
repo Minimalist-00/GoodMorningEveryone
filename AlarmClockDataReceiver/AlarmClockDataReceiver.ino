@@ -5,25 +5,24 @@
 
 #define LED_PIN 15
 #define NUM_LEDS 30
-#define BRIGHTNESS 100 // 明るさ
+#define BRIGHTNESS 100  // 明るさ
 #define BUZZER_PIN 25
-#define FREQUENCY 10 // 周波数
-#define LED_DELAY 50 // LEDの点滅間隔
-#define BEAT 200     // 音を鳴らす間隔
+#define FREQUENCY 10  // 周波数
+#define LED_DELAY 50  // LEDの点滅間隔
+#define BEAT 200      // 音を鳴らす間隔
 
-uint8_t senderAddress[] = {0x40, 0x91, 0x51, 0xBE, 0xFB, 0x50}; // 送信機のMACアドレス
-esp_now_peer_info_t sender;                                     // ESP-Nowの送信機の情報
+uint8_t senderAddress[] = { 0x40, 0x91, 0x51, 0xBE, 0xFB, 0x50 };  // 送信機のMACアドレス
+esp_now_peer_info_t sender;                                        // ESP-Nowの送信機の情報
 bool alarmState = false;
 
-int randomNumber = random(0, 2);
+int randomNumber = 0;
 
 Adafruit_NeoPixel pixels(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-struct __attribute__((packed)) SENSOR_DATA
-{
-  bool lightState;  // 明るさ〇〇以上かどうか
-  bool switchState; // スイッチの状態
-  bool isLightData; // 光センサデータであるかどうか
+struct __attribute__((packed)) SENSOR_DATA {
+  bool lightState;   // 明るさ〇〇以上かどうか
+  bool switchState;  // スイッチの状態
+  bool isLightData;  // 光センサデータであるかどうか
 } sensorData;
 
 /*
@@ -36,35 +35,30 @@ const char* password = "8cc6fa2fe57bd";  // ネットワークパスワード
 
 // LEDの制御用変数と関数の定義
 CRGB leds[NUM_LEDS];
-uint8_t hue = 0;              // 色相値を初期化
-float frequency = 0.1;        // サインカーブの周波数を設定
-float phaseShift = 0.0;       // サインカーブの位相を設定
-unsigned long lastUpdate = 0; // 前回のLED更新時間を記録
-int loops = 0;                // ループの回数を数える
-float frequencies[] = {554.36, 440.00, 880.00, 659.25, 738.98, 587.33, 1100.66, 783.99, 987.76};
+uint8_t hue = 0;               // 色相値を初期化
+float frequency = 0.1;         // サインカーブの周波数を設定
+float phaseShift = 0.0;        // サインカーブの位相を設定
+unsigned long lastUpdate = 0;  // 前回のLED更新時間を記録
+int loops = 0;                 // ループの回数を数える
+float frequencies[] = { 554.36, 440.00, 880.00, 659.25, 738.98, 587.33, 1100.66, 783.99, 987.76 };
 int numFrequencies = sizeof(frequencies) / sizeof(frequencies[0]);
-int currentFrequencyIndex = 0; // 現在の周波数のインデックス
+int currentFrequencyIndex = 0;  // 現在の周波数のインデックス
 
 // ブザーを鳴らす処理
-void playmusic()
-{
+void playmusic() {
   ledcWriteTone(1, FREQUENCY);
-  delay(LED_DELAY);
 }
 
 // LEDが光る処理
-void blinkLED()
-{
-  for (uint8_t i = 0; i < NUM_LEDS; i++)
-  {
-    pixels.setPixelColor(i, pixels.Color(255, 0, 0)); // (R, G, B)
+void blinkLED() {
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    pixels.setPixelColor(i, pixels.Color(255, 0, 0));  // (R, G, B)
   }
   // ピクセルの状態を更新
   pixels.show();
   delay(LED_DELAY);
   // すべてのLEDを消灯
-  for (uint8_t i = 0; i < NUM_LEDS; i++)
-  {
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
     pixels.setPixelColor(i, pixels.Color(0, 0, 0));
   }
 
@@ -72,23 +66,19 @@ void blinkLED()
   delay(LED_DELAY);
 }
 
-void playTone(float frequency, unsigned long duration)
-{
+void playTone(float frequency, unsigned long duration) {
   unsigned long endTime = millis() + duration;
 
-  while (millis() < endTime)
-  {
+  while (millis() < endTime) {
     ledcWriteTone(1, frequency);
-    for (int i = 0; i < NUM_LEDS; i++)
-    {
+    for (int i = 0; i < NUM_LEDS; i++) {
       float value = sin(2 * PI * (i * frequency + phaseShift)) * 127.5 + 127.5;
       uint8_t saturation = 255;
       leds[i] = CHSV(hue + i * 2, saturation, value);
     }
     FastLED.show();
     hue++;
-    if (hue == 256)
-    {
+    if (hue == 256) {
       hue = 0;
     }
     phaseShift += 0.1;
@@ -98,8 +88,7 @@ void playTone(float frequency, unsigned long duration)
 }
 
 // 受信コールバック
-void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len)
-{
+void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
   char macStr[18];
   // MACアドレスの文字列化
   snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -107,39 +96,34 @@ void onReceive(const uint8_t *mac_addr, const uint8_t *data, int data_len)
   // Serial.printf("Last Packet Recv from: %s\n", macStr);  // 最後に受信したパケットのMACアドレス
   memcpy(&sensorData, data, data_len);
 
+  randomNumber = random(0, 2);
+
   // 受信データの確認
   Serial.println("Received now");
   Serial.println("lightState: " + String(sensorData.lightState));
   Serial.println("switchState: " + String(sensorData.switchState));
-  // Serial.println("isLightData: " + String(sensorData.isLightData));
+   Serial.println(randomNumber);
 
-  if (sensorData.lightState && sensorData.switchState)
-  {
+
+  if (sensorData.lightState && sensorData.switchState) {
     alarmState = true;
-  }
-  else
-  {
+  } else {
     alarmState = false;
-    ledcWriteTone(1, 0); // ブザーを止める
   }
 }
 
-void setup()
-{
-  Serial.begin(115200); // シリアル通信の開始
+void setup() {
+  Serial.begin(115200);  // シリアル通信の開始
 
-  WiFi.mode(WIFI_STA); // WiFiをステーションモードに設定
-  WiFi.disconnect();   // 初期化時にWiFiを切断
+  WiFi.mode(WIFI_STA);  // WiFiをステーションモードに設定
+  WiFi.disconnect();    // 初期化時にWiFiを切断
 
   // ESP-Nowの初期化
-  if (esp_now_init() == ESP_OK)
-  {
+  if (esp_now_init() == ESP_OK) {
     Serial.println("ESPNow 初期化成功");
-  }
-  else
-  {
+  } else {
     Serial.println("ESPNow 初期化失敗");
-    ESP.restart(); // 再起動
+    ESP.restart();  // 再起動
   }
 
   // 送信機の情報を設定
@@ -149,12 +133,9 @@ void setup()
 
   // 送信機をペアリングリストに追加
   esp_err_t addStatus = esp_now_add_peer(&sender);
-  if (addStatus == ESP_OK)
-  { // ペアリング成功
+  if (addStatus == ESP_OK) {  // ペアリング成功
     Serial.println("ペアリング成功");
-  }
-  else
-  { // ペアリング失敗
+  } else {  // ペアリング失敗
     Serial.print("ペアリング失敗, error code: ");
     Serial.println(addStatus);
   }
@@ -175,11 +156,11 @@ void setup()
   ledcSetup(1, 12000, 8);
   ledcAttachPin(BUZZER_PIN, 1);
   pixels.begin();
-  pixels.setBrightness(BRIGHTNESS); // 明るさの設定
+  pixels.setBrightness(BRIGHTNESS);  // 明るさの設定
   pixels.clear();
   pixels.show();
-  FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS); // NeoPixel LEDストリップを初期化
-  FastLED.setBrightness(BRIGHTNESS);                  // 明るさを設定
+  FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);  // NeoPixel LEDストリップを初期化
+  FastLED.setBrightness(BRIGHTNESS);                   // 明るさを設定
 
   // 受信コールバックの登録
   esp_now_register_recv_cb(onReceive);
@@ -194,8 +175,7 @@ void setup()
   */
 }
 
-void loop()
-{
+void loop() {
   /*
   // 時間の制約
   struct tm timeinfo;
@@ -204,34 +184,27 @@ void loop()
   }
   */
   // 明るい + スイッチがONのとき LEDテープを光らせる
-  if (alarmState)
-  {
-    if (randomNumber == 0)
-    {
+  if (alarmState) {
+    if (randomNumber == 0) {
       blinkLED();
       playmusic();
-    }
-    else
-    {
+    } else {
       unsigned long currentMillis = millis();
-      if (currentMillis - lastUpdate >= 10)
-      { // LEDを更新
+      if (currentMillis - lastUpdate >= 10) {  // LEDを更新
         lastUpdate = currentMillis;
         // ブザーを鳴らす
         float currentFrequency = frequencies[currentFrequencyIndex];
-        playTone(currentFrequency, BEAT); // ブザーを周波数に応じて鳴らす
+        playTone(currentFrequency, BEAT);  // ブザーを周波数に応じて鳴らす
         // 次の周波数へのインデックスを更新
         currentFrequencyIndex = (currentFrequencyIndex + 1) % numFrequencies;
       }
     }
-  }
-  else
-  {
+  } else {
     // LEDテープを消灯
-    for (uint8_t i = 0; i < NUM_LEDS; i++)
-    {
+    for (uint8_t i = 0; i < NUM_LEDS; i++) {
       pixels.setPixelColor(i, pixels.Color(0, 0, 0));
     }
     pixels.show();
+    ledcWriteTone(1, 0);  // ブザーを止める
   }
 }
